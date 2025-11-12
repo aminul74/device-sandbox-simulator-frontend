@@ -29,10 +29,19 @@ export default function Canvas() {
 
     // Check if it's a preset being dropped
     const presetData = e.dataTransfer.getData("application/preset");
+    const generateUniqueId = () =>
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
     if (presetData) {
       try {
         const preset = JSON.parse(presetData) as Preset;
-        setDevices(preset.devices);
+        // Ensure all device IDs are unique when loading a preset
+        const devicesWithUniqueIds = preset.devices.map((device) => ({
+          ...device,
+          id: generateUniqueId(),
+        }));
+        setDevices(devicesWithUniqueIds);
         setSelectedDeviceId(null);
         return;
       } catch {
@@ -49,7 +58,7 @@ export default function Canvas() {
       const x = e.clientX - rect.left - 40;
       const y = e.clientY - rect.top - 40;
       const base: PD = {
-        id: `${Date.now()}-${Math.random()}`,
+        id: generateUniqueId(),
         type: payload.type,
         x: Math.max(0, x),
         y: Math.max(0, y),
@@ -129,118 +138,108 @@ export default function Canvas() {
           {/* bottom-center controls card */}
           {selected && (
             <div className="absolute left-1/2 -translate-x-1/2 bottom-6 w-[560px] bg-[#0b1526]/90 border border-white/5 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
-              <div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-white/90 text-base font-medium">
-                      Power
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={!!selected.power}
-                        onChange={(e) =>
-                          updateItem(selected.id, { power: e.target.checked })
-                        }
-                        className="sr-only"
-                        aria-label="Toggle power"
-                      />
-                      <div
-                        className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 flex items-center ${
-                          selected.power ? "bg-[#2B7FFF]" : "bg-[#2A3441]"
+              <div className="flex items-center justify-between">
+                <div className="text-white/90 text-base font-medium">Power</div>
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!selected.power}
+                    onChange={(e) =>
+                      updateItem(selected.id, { power: e.target.checked })
+                    }
+                    className="sr-only"
+                    aria-label="Toggle power"
+                  />
+                  <div
+                    className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 flex items-center ${
+                      selected.power ? "bg-[#2B7FFF]" : "bg-[#2A3441]"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        selected.power ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              {selected.type === "light" ? (
+                <div className="mt-3">
+                  <div className="text-[15px] text-white/80 mb-3">
+                    Color Temperature
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {["#ffdca6", "#f7fbff", "#aee7ff", "#ffccd7"].map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => updateItem(selected.id, { color: c })}
+                        style={{ background: c }}
+                        aria-pressed={selected.color === c}
+                        className={`w-[120px] h-[68px] rounded-xl border transition-all duration-200 shadow-sm ${
+                          selected.color === c
+                            ? "ring-2 ring-[#2B7FFF] border-[#2B7FFF] shadow-[0_0_0_4px_rgba(43,127,255,0.15)]"
+                            : "border-white/15 hover:border-white/25"
                         }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                            selected.power ? "translate-x-5" : "translate-x-0"
-                          }`}
-                        />
-                      </div>
-                    </label>
+                      />
+                    ))}
                   </div>
 
-                  {selected.type === "light" ? (
-                    <div className="mt-3">
-                      <div className="text-[15px] text-white/80 mb-3">
-                        Color Temperature
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[17px] text-white/85">
+                        Brightness
                       </div>
-                      <div className="flex items-center gap-4">
-                        {["#ffdca6", "#f7fbff", "#aee7ff", "#ffccd7"].map(
-                          (c) => (
-                            <button
-                              key={c}
-                              onClick={() =>
-                                updateItem(selected.id, { color: c })
-                              }
-                              style={{ background: c }}
-                              aria-pressed={selected.color === c}
-                              className={`w-[120px] h-[68px] rounded-xl border transition-all duration-200 shadow-sm ${
-                                selected.color === c
-                                  ? "ring-2 ring-[#2B7FFF] border-[#2B7FFF] shadow-[0_0_0_4px_rgba(43,127,255,0.15)]"
-                                  : "border-white/15 hover:border-white/25"
-                              }`}
-                            />
-                          )
-                        )}
-                      </div>
-
-                      <div className="mt-5">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-[17px] text-white/85">
-                            Brightness
-                          </div>
-                          <div className="text-[17px] text-white/50">
-                            {selected.brightness ?? 70}%
-                          </div>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={selected.brightness ?? 70}
-                          onChange={(e) =>
-                            updateItem(selected.id, {
-                              brightness: Number(e.target.value),
-                            })
-                          }
-                          className="slider w-full"
-                          style={{
-                            // @ts-expect-error CSS custom property for background fill size
-                            "--p": `${selected.brightness ?? 70}%`,
-                          }}
-                          aria-label="Brightness"
-                        />
+                      <div className="text-[17px] text-white/50">
+                        {selected.brightness ?? 70}%
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-[17px] text-white/85">Speed</div>
-                        <div className="text-[17px] text-white/50">
-                          {selected.speed ?? 60}%
-                        </div>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={selected.speed ?? 60}
-                        onChange={(e) =>
-                          updateItem(selected.id, {
-                            speed: Number(e.target.value),
-                          })
-                        }
-                        className="slider w-full"
-                        style={{
-                          // @ts-expect-error CSS custom property for background fill size
-                          "--p": `${selected.speed ?? 60}%`,
-                        }}
-                        aria-label="Speed"
-                      />
-                    </div>
-                  )}
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={selected.brightness ?? 70}
+                      onChange={(e) =>
+                        updateItem(selected.id, {
+                          brightness: Number(e.target.value),
+                        })
+                      }
+                      className="slider w-full"
+                      style={{
+                        // @ts-expect-error CSS custom property for background fill size
+                        "--p": `${selected.brightness ?? 70}%`,
+                      }}
+                      aria-label="Brightness"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[17px] text-white/85">Speed</div>
+                    <div className="text-[17px] text-white/50">
+                      {selected.speed ?? 60}%
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={selected.speed ?? 60}
+                    onChange={(e) =>
+                      updateItem(selected.id, {
+                        speed: Number(e.target.value),
+                      })
+                    }
+                    className="slider w-full"
+                    style={{
+                      // @ts-expect-error CSS custom property for background fill size
+                      "--p": `${selected.speed ?? 60}%`,
+                    }}
+                    aria-label="Speed"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
