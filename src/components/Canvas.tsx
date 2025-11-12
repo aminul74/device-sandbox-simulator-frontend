@@ -37,7 +37,7 @@ export default function Canvas() {
       try {
         const preset = JSON.parse(presetData) as Preset;
         // Ensure all device IDs are unique when loading a preset
-        const devicesWithUniqueIds = preset.devices.map((device) => ({
+        const devicesWithUniqueIds = preset.settings.map((device) => ({
           ...device,
           id: generateUniqueId(),
         }));

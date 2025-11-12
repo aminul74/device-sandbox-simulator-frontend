@@ -19,7 +19,7 @@ export interface AvailableDevice {
 export interface Preset {
   id: number;
   name: string;
-  devices: PlacedDevice[];
+  settings: PlacedDevice[];
   created_at?: string;
   updated_at?: string;
 }

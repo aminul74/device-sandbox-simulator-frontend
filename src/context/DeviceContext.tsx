@@ -157,7 +157,12 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
 
   const loadPreset = useCallback(
     (preset: Preset) => {
-      setDevices(preset.devices);
+      console.log("Loading preset:", preset);
+      const settingsArray = Array.isArray(preset.settings)
+        ? preset.settings
+        : [];
+      console.log("Settings array:", settingsArray);
+      setDevices(settingsArray);
       setSelectedDeviceId(null);
       showToast(`Preset "${preset.name}" loaded`, "success");
     },
