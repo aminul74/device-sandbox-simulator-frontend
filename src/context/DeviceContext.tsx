@@ -1,19 +1,64 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, createContext } from "react";
 import type { ReactNode } from "react";
-import type { PlacedDevice, Preset } from "../types";
+import type { PlacedDevice, Preset, AvailableDevice } from "../types";
 import { presetsApi, devicesApi } from "../services/api";
-import { DeviceContext } from "./DeviceContextType";
-import type { DeviceContextType } from "./DeviceContextType";
+
+// Public shape of the context for consumers
+export interface DeviceContextValue {
+  // Canvas devices
+  devices: PlacedDevice[];
+  setDevices: React.Dispatch<React.SetStateAction<PlacedDevice[]>>;
+  addDevice: (device: PlacedDevice) => void;
+  updateDevice: (id: string, updates: Partial<PlacedDevice>) => void;
+  removeDevice: (id: string) => void;
+  clearDevices: () => void;
+
+  // Selection
+  selectedDeviceId: string | null;
+  setSelectedDeviceId: (id: string | null) => void;
+
+  // Presets
+  presets: Preset[];
+  loadPresets: () => Promise<void>;
+  savePreset: (name: string) => Promise<void>;
+  loadPreset: (preset: Preset) => void;
+  deletePreset: (id: number) => Promise<void>;
+
+  // Available device types
+  availableDevices: AvailableDevice[];
+
+  // UI state
+  loading: boolean;
+  error: string | null;
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
+  toast: { message: string; type: "success" | "error" | "info" } | null;
+}
+
+const DeviceContext = createContext<DeviceContextValue | null>(null);
 
 interface DeviceProviderProps {
   children: ReactNode;
 }
 
+// Default available device types (used if API is unavailable)
+const DEFAULT_DEVICE_TYPES: AvailableDevice[] = [
+  { type: "fan", label: "Fan" },
+  { type: "light", label: "Light" },
+];
+
 export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
+  // Devices on canvas
   const [devices, setDevices] = useState<PlacedDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+
+  // Presets
   const [presets, setPresets] = useState<Preset[]>([]);
-  const [availableDevices, setAvailableDevices] = useState<PlacedDevice[]>([]);
+
+  // Available device types
+  const [availableDevices, setAvailableDevices] =
+    useState<AvailableDevice[]>(DEFAULT_DEVICE_TYPES);
+
+  // UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
@@ -21,192 +66,148 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
     type: "success" | "error" | "info";
   } | null>(null);
 
-  // Load presets and available devices on mount
+  // Toast helper
+  const showToast = useCallback(
+    (message: string, type: "success" | "error" | "info" = "info") => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 3000);
+    },
+    []
+  );
+
+  // Initial data load
   useEffect(() => {
-    const initData = async () => {
+    const init = async () => {
       setLoading(true);
       setError(null);
-      try {
-        // Fetch presets
-        const fetchedPresets = await presetsApi.getAll();
-        setPresets(fetchedPresets);
 
-        // Fetch available devices
-        try {
-          const fetchedDevices = await devicesApi.getAll();
-          setAvailableDevices(fetchedDevices);
-        } catch (deviceErr) {
-          console.error("Error loading devices:", deviceErr);
-          // If API fails, we can continue without available devices
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to load data";
-        setError(errorMessage);
-        console.error("Error loading data:", err);
+      const [presetsRes, devicesRes] = await Promise.allSettled([
+        presetsApi.getAll(),
+        devicesApi.getAll(),
+      ]);
 
-        // Fallback to localStorage if API fails
-        try {
-          const localPresets = localStorage.getItem("presets");
-          if (localPresets) {
-            setPresets(JSON.parse(localPresets));
-          }
-        } catch (localErr) {
-          console.error("Failed to load from localStorage:", localErr);
-        }
-      } finally {
-        setLoading(false);
+      if (presetsRes.status === "fulfilled") {
+        setPresets(presetsRes.value);
+      } else {
+        const msg =
+          presetsRes.reason instanceof Error
+            ? presetsRes.reason.message
+            : "Failed to load presets";
+        setError(msg);
+        showToast(msg, "error");
       }
+
+      if (devicesRes.status === "fulfilled") {
+        const uniqueTypes = Array.from(
+          new Set(devicesRes.value.map((d) => d.type))
+        );
+        if (uniqueTypes.length) {
+          setAvailableDevices(
+            uniqueTypes.map((type) => ({
+              type,
+              label: type[0]?.toUpperCase() + type.slice(1),
+            }))
+          );
+        }
+      }
+
+      setLoading(false);
     };
 
-    initData();
-  }, []);
+    init();
+  }, [showToast]);
 
-  const loadPresets = async () => {
+  // Presets
+  const loadPresets = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const fetchedPresets = await presetsApi.getAll();
-      setPresets(fetchedPresets);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load presets";
-      setError(errorMessage);
-      console.error("Error loading presets:", err);
-
-      // Fallback to localStorage if API fails
-      try {
-        const localPresets = localStorage.getItem("presets");
-        if (localPresets) {
-          setPresets(JSON.parse(localPresets));
-          showToast("Using local presets (API unavailable)", "info");
-        }
-      } catch (localErr) {
-        console.error("Failed to load from localStorage:", localErr);
-      }
+      setPresets(await presetsApi.getAll());
+      showToast("Presets loaded", "success");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load presets";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const savePreset = async (name: string) => {
-    if (!name.trim()) {
-      showToast("Please enter a preset name", "error");
-      return;
-    }
+  const savePreset = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return showToast("Please enter a preset name", "error");
+      if (!devices.length) return showToast("No devices to save", "error");
 
-    if (devices.length === 0) {
-      showToast("No devices to save", "error");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const newPreset = await presetsApi.create(name, devices);
-      setPresets((prev) => [...prev, newPreset]);
-
-      // Also save to localStorage as backup
-      const allPresets = [...presets, newPreset];
-      localStorage.setItem("presets", JSON.stringify(allPresets));
-
-      showToast(`Preset "${name}" saved successfully!`, "success");
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to save preset";
-      setError(errorMessage);
-      showToast(errorMessage, "error");
-
-      // Fallback to localStorage
+      setLoading(true);
       try {
-        const newPreset: Preset = {
-          id: Date.now(),
-          name,
-          devices: [...devices],
-          created_at: new Date().toISOString(),
-        };
-        const allPresets = [...presets, newPreset];
-        setPresets(allPresets);
-        localStorage.setItem("presets", JSON.stringify(allPresets));
-        showToast(`Preset saved locally (API unavailable)`, "info");
-      } catch (localErr) {
-        console.error("Failed to save to localStorage:", localErr);
+        const created = await presetsApi.create(trimmed, devices);
+        setPresets((prev) => [...prev, created]);
+        showToast(`Preset "${trimmed}" saved`, "success");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to save preset";
+        setError(msg);
+        showToast(msg, "error");
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [devices, showToast]
+  );
 
-  const loadPreset = (preset: Preset) => {
-    setDevices(preset.devices);
-    setSelectedDeviceId(null);
-    showToast(`Preset "${preset.name}" loaded`, "success");
-  };
+  const loadPreset = useCallback(
+    (preset: Preset) => {
+      setDevices(preset.devices);
+      setSelectedDeviceId(null);
+      showToast(`Preset "${preset.name}" loaded`, "success");
+    },
+    [showToast]
+  );
 
-  const deletePreset = async (id: number) => {
-    setLoading(true);
-    try {
-      await presetsApi.delete(id);
-      setPresets((prev) => prev.filter((p) => p.id !== id));
-
-      // Also remove from localStorage
-      const updatedPresets = presets.filter((p) => p.id !== id);
-      localStorage.setItem("presets", JSON.stringify(updatedPresets));
-
-      showToast("Preset deleted successfully", "success");
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to delete preset";
-      setError(errorMessage);
-      showToast(errorMessage, "error");
-
-      // Fallback to localStorage
+  const deletePreset = useCallback(
+    async (id: number) => {
+      setLoading(true);
       try {
-        const updatedPresets = presets.filter((p) => p.id !== id);
-        setPresets(updatedPresets);
-        localStorage.setItem("presets", JSON.stringify(updatedPresets));
-        showToast("Preset deleted locally", "info");
-      } catch (localErr) {
-        console.error("Failed to delete from localStorage:", localErr);
+        await presetsApi.delete(id);
+        setPresets((prev) => prev.filter((p) => p.id !== id));
+        showToast("Preset deleted", "success");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to delete preset";
+        setError(msg);
+        showToast(msg, "error");
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [showToast]
+  );
 
-  const addDevice = (device: PlacedDevice) => {
+  // Devices on canvas
+  const addDevice = useCallback((device: PlacedDevice) => {
     setDevices((prev) => [...prev, device]);
     setSelectedDeviceId(device.id);
-  };
+  }, []);
 
-  const updateDevice = (id: string, updates: Partial<PlacedDevice>) => {
-    setDevices((prev) =>
-      prev.map((device) =>
-        device.id === id ? { ...device, ...updates } : device
-      )
-    );
-  };
+  const updateDevice = useCallback(
+    (id: string, updates: Partial<PlacedDevice>) => {
+      setDevices((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, ...updates } : d))
+      );
+    },
+    []
+  );
 
-  const removeDevice = (id: string) => {
-    setDevices((prev) => prev.filter((device) => device.id !== id));
-    if (selectedDeviceId === id) {
-      setSelectedDeviceId(null);
-    }
-  };
+  const removeDevice = useCallback((id: string) => {
+    setDevices((prev) => prev.filter((d) => d.id !== id));
+    setSelectedDeviceId((sel) => (sel === id ? null : sel));
+  }, []);
 
-  const clearDevices = () => {
+  const clearDevices = useCallback(() => {
     setDevices([]);
     setSelectedDeviceId(null);
-  };
+  }, []);
 
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "info"
-  ) => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const value: DeviceContextType = {
+  const value: DeviceContextValue = {
     devices,
     setDevices,
     addDevice,
@@ -223,7 +224,6 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
     availableDevices,
     loading,
     error,
-    setError,
     showToast,
     toast,
   };
@@ -232,3 +232,5 @@ export const DeviceProvider: React.FC<DeviceProviderProps> = ({ children }) => {
     <DeviceContext.Provider value={value}>{children}</DeviceContext.Provider>
   );
 };
+
+export { DeviceContext };

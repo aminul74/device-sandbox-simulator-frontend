@@ -1,11 +1,10 @@
-import React, { useRef } from "react";
+﻿import React, { useRef } from "react";
 import type { PlacedDevice as PD } from "../types";
 
 interface Props {
   item: PD;
   onMove: (id: string, x: number, y: number) => void;
   onSelect?: (id: string) => void;
-  selected?: boolean;
 }
 
 export default function PlacedDevice({ item, onMove, onSelect }: Props) {

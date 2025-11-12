@@ -36,7 +36,7 @@ export default function Canvas() {
         setSelectedDeviceId(null);
         return;
       } catch {
-        // ignore malformed preset
+        console.error("Failed to parse dropped preset data");
       }
     }
 
@@ -60,7 +60,7 @@ export default function Canvas() {
           : { ...base, power: true, speed: 60 };
       addDevice(newItem);
     } catch {
-      // ignore malformed payload
+      console.error("Failed to parse dropped device data");
     }
   }
 
@@ -123,20 +123,19 @@ export default function Canvas() {
               item={it}
               onMove={moveItem}
               onSelect={(id) => setSelectedDeviceId(id)}
-              selected={selectedDeviceId === it.id}
             />
           ))}
 
           {/* bottom-center controls card */}
           {selected && (
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-6 w-[560px] bg-[#081123]/80 border border-white/5 rounded-xl p-4 shadow-lg">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-6 w-[560px] bg-[#0b1526]/90 border border-white/5 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+              <div>
+                <div>
                   <div className="flex items-center justify-between">
-                    <div className="text-white/90 text-sm font-medium">
-                      {selected.type === "light" ? "Power" : "Power"}
+                    <div className="text-white/90 text-base font-medium">
+                      Power
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={!!selected.power}
@@ -144,11 +143,16 @@ export default function Canvas() {
                           updateItem(selected.id, { power: e.target.checked })
                         }
                         className="sr-only"
+                        aria-label="Toggle power"
                       />
-                      <div className="w-10 h-6 bg-gray-600 rounded-full shadow-inner flex items-center p-1">
+                      <div
+                        className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 flex items-center ${
+                          selected.power ? "bg-[#2B7FFF]" : "bg-[#2A3441]"
+                        }`}
+                      >
                         <div
-                          className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                            selected.power ? "translate-x-4" : ""
+                          className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                            selected.power ? "translate-x-5" : "translate-x-0"
                           }`}
                         />
                       </div>
@@ -157,10 +161,10 @@ export default function Canvas() {
 
                   {selected.type === "light" ? (
                     <div className="mt-3">
-                      <div className="text-xs text-white/70 mb-2">
+                      <div className="text-[15px] text-white/80 mb-3">
                         Color Temperature
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-4">
                         {["#ffdca6", "#f7fbff", "#aee7ff", "#ffccd7"].map(
                           (c) => (
                             <button
@@ -169,35 +173,26 @@ export default function Canvas() {
                                 updateItem(selected.id, { color: c })
                               }
                               style={{ background: c }}
-                              className={`w-10 h-8 rounded-md border ${
+                              aria-pressed={selected.color === c}
+                              className={`w-[120px] h-[68px] rounded-xl border transition-all duration-200 shadow-sm ${
                                 selected.color === c
-                                  ? "ring-2 ring-white/30"
-                                  : "border-white/8"
+                                  ? "ring-2 ring-[#2B7FFF] border-[#2B7FFF] shadow-[0_0_0_4px_rgba(43,127,255,0.15)]"
+                                  : "border-white/15 hover:border-white/25"
                               }`}
                             />
                           )
                         )}
-                        {/* color picker for arbitrary color */}
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="text-xs text-white/70">Custom</div>
-                          <input
-                            type="color"
-                            value={selected.color ?? "#ffdca6"}
-                            onChange={(e) =>
-                              updateItem(selected.id, { color: e.target.value })
-                            }
-                            className="w-10 h-8 p-0 border rounded"
-                            aria-label="Choose light color"
-                          />
-                          <div
-                            className="w-8 h-8 rounded-md border"
-                            style={{ background: selected.color ?? "#ffdca6" }}
-                          />
-                        </div>
                       </div>
 
-                      <div className="mt-3 flex items-center gap-3">
-                        <div className="text-xs text-white/60">Brightness</div>
+                      <div className="mt-5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-[17px] text-white/85">
+                            Brightness
+                          </div>
+                          <div className="text-[17px] text-white/50">
+                            {selected.brightness ?? 70}%
+                          </div>
+                        </div>
                         <input
                           type="range"
                           min={0}
@@ -208,38 +203,43 @@ export default function Canvas() {
                               brightness: Number(e.target.value),
                             })
                           }
-                          className="flex-1"
+                          className="slider w-full"
+                          style={{
+                            // @ts-expect-error CSS custom property for background fill size
+                            "--p": `${selected.brightness ?? 70}%`,
+                          }}
+                          aria-label="Brightness"
                         />
-                        <div className="text-xs text-white/60 w-10 text-right">
-                          {selected.brightness ?? 70}%
-                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-3">
-                      <div className="text-xs text-white/70 mb-2">Speed</div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={selected.speed ?? 60}
-                          onChange={(e) =>
-                            updateItem(selected.id, {
-                              speed: Number(e.target.value),
-                            })
-                          }
-                          className="flex-1"
-                        />
-                        <div className="text-xs text-white/60 w-10 text-right">
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[17px] text-white/85">Speed</div>
+                        <div className="text-[17px] text-white/50">
                           {selected.speed ?? 60}%
                         </div>
                       </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={selected.speed ?? 60}
+                        onChange={(e) =>
+                          updateItem(selected.id, {
+                            speed: Number(e.target.value),
+                          })
+                        }
+                        className="slider w-full"
+                        style={{
+                          // @ts-expect-error CSS custom property for background fill size
+                          "--p": `${selected.speed ?? 60}%`,
+                        }}
+                        aria-label="Speed"
+                      />
                     </div>
                   )}
                 </div>
-
-                <div className="w-36" />
               </div>
             </div>
           )}

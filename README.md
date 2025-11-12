@@ -1,45 +1,43 @@
-﻿# Device Sandbox Simulator - Frontend
+﻿# Device Sandbox Simulator (Frontend)
 
-A modern, interactive React application for controlling virtual devices (Light and Fan) with drag-and-drop functionality and preset management.
+An interactive React + TypeScript app to drag-and-drop virtual devices (Light and Fan), control them, and manage presets.
 
-## Quick Start
+## Quick start
 
-\\\ash
+```powershell
 # Install dependencies
 npm install
 
-# Create .env file
-echo VITE_API_URL=http://localhost/device-sandbox-api > .env
+# Configure API base URL (optional)
+echo VITE_API_URL=http://127.0.0.1:8000/api > .env
 
-# Start development server
+# Start the dev server
 npm run dev
-\\\
+```
 
-Visit http://localhost:5173
+Open http://localhost:5173 in your browser.
 
 ## Features
 
 - Drag-and-drop device placement
-- Real-time device controls (light brightness/color, fan speed)
-- Save/Load/Delete presets
-- LocalStorage fallback
+- Real-time controls (light color/brightness, fan speed)
+- Save / Load / Delete presets
 - Toast notifications
-- Modern UI with animations
+- Clean, minimal architecture (Context API)
 
-## Tech Stack
+## Scripts
 
-- React 19 + TypeScript
-- Vite
-- Tailwind CSS 4
-- Axios
-- Context API
+```powershell
+npm run dev     # Start dev server
+npm run build   # Type-check and build for production
+npm run lint    # Run ESLint
+```
 
-## Development
+## Architecture overview
 
-\\\ash
-npm run dev      # Start dev server
-npm run build    # Build for production
-npm run lint     # Run ESLint
-\\\
+- src/context/DeviceContext.tsx — single source of truth for app state and actions
+- src/components/\* — UI components (Canvas, Sidebar, Items, Dialog, Toast)
+- src/services/api.ts — minimal typed API layer for presets and devices
+- src/types/index.ts — shared TypeScript types
 
-See main README for full documentation.
+Environment variable: set VITE_API_URL to point to your backend. If not set, it defaults to http://127.0.0.1:8000/api.

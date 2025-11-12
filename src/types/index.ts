@@ -11,6 +11,11 @@ export interface PlacedDevice {
   speed?: number;
 }
 
+export interface AvailableDevice {
+  type: DeviceType;
+  label: string;
+}
+
 export interface Preset {
   id: number;
   name: string;
