@@ -3,11 +3,25 @@ export type DeviceType = "light" | "fan";
 export interface PlacedDevice {
   id: string;
   type: DeviceType;
-  x: number; // px from left inside canvas
-  y: number; // px from top inside canvas
-  // optional device settings
+  x: number;
+  y: number;
   power?: boolean;
-  brightness?: number; // 0-100
-  color?: string; // hex or named
-  speed?: number; // for fan 0-100
+  brightness?: number;
+  color?: string;
+  speed?: number;
+}
+
+export interface Preset {
+  id: number;
+  name: string;
+  devices: PlacedDevice[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
 }

@@ -1,12 +1,24 @@
 import React, { useRef, useState } from "react";
-import type { PlacedDevice as PD, DeviceType } from "../types";
+import type { PlacedDevice as PD, DeviceType, Preset } from "../types";
 import PlacedDevice from "./PlacedDevice";
+import PresetDialog from "./PresetDialog";
+import { useDeviceContext } from "../context/useDeviceContext";
 
 export default function Canvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [items, setItems] = useState<PD[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const {
+    devices: items,
+    setDevices,
+    addDevice,
+    updateDevice: updateItem,
+    clearDevices,
+    selectedDeviceId,
+    setSelectedDeviceId,
+    savePreset,
+    loading,
+  } = useDeviceContext();
+
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
@@ -14,12 +26,27 @@ export default function Canvas() {
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
+
+    // Check if it's a preset being dropped
+    const presetData = e.dataTransfer.getData("application/preset");
+    if (presetData) {
+      try {
+        const preset = JSON.parse(presetData) as Preset;
+        setDevices(preset.devices);
+        setSelectedDeviceId(null);
+        return;
+      } catch {
+        // ignore malformed preset
+      }
+    }
+
+    // Otherwise, it's a device being dropped
     const raw = e.dataTransfer.getData("application/device");
     if (!raw) return;
     try {
       const payload = JSON.parse(raw) as { type: DeviceType };
       const rect = containerRef.current!.getBoundingClientRect();
-      const x = e.clientX - rect.left - 40; // center offset
+      const x = e.clientX - rect.left - 40;
       const y = e.clientY - rect.top - 40;
       const base: PD = {
         id: `${Date.now()}-${Math.random()}`,
@@ -31,40 +58,29 @@ export default function Canvas() {
         payload.type === "light"
           ? { ...base, power: true, brightness: 70, color: "#ffdca6" }
           : { ...base, power: true, speed: 60 };
-      setItems((s) => [...s, newItem]);
-      setSelectedId(newItem.id);
+      addDevice(newItem);
     } catch {
       // ignore malformed payload
     }
   }
 
   function moveItem(id: string, x: number, y: number) {
-    setItems((s) => s.map((it) => (it.id === id ? { ...it, x, y } : it)));
+    updateItem(id, { x, y });
   }
 
-  function updateItem(id: string, patch: Partial<PD>) {
-    setItems((s) => s.map((it) => (it.id === id ? { ...it, ...patch } : it)));
-  }
-
-  function clearCanvas() {
-    setItems([]);
-    setSelectedId(null);
-  }
-
-  function savePreset() {
-    try {
-      const existing = JSON.parse(localStorage.getItem("presets") || "[]");
-      existing.push({ id: Date.now(), items });
-      localStorage.setItem("presets", JSON.stringify(existing));
-      setToast("Preset saved");
-      setTimeout(() => setToast(null), 2000);
-    } catch {
-      setToast("Failed to save");
-      setTimeout(() => setToast(null), 2000);
+  function handleSavePreset() {
+    if (items.length === 0) {
+      return;
     }
+    setShowPresetDialog(true);
   }
 
-  const selected = items.find((it) => it.id === selectedId) ?? null;
+  async function handlePresetSave(name: string) {
+    await savePreset(name);
+    setShowPresetDialog(false);
+  }
+
+  const selected = items.find((it) => it.id === selectedDeviceId) ?? null;
 
   return (
     <div className="flex-1 p-6 bg-[#030712]">
@@ -81,22 +97,23 @@ export default function Canvas() {
           {/* top-right actions */}
           <div className="absolute right-4 top-4 flex gap-3">
             <button
-              onClick={clearCanvas}
-              className="bg-[#0b1620] text-white/80 px-3 py-1 rounded-md border border-white/6 text-sm"
+              onClick={() => clearDevices()}
+              className="bg-[#0b1620] text-white/80 px-3 py-1 rounded-md border border-white/6 text-sm hover:bg-[#1E2939] transition-colors"
             >
               Clear
             </button>
             <button
-              onClick={savePreset}
-              className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm shadow"
+              onClick={handleSavePreset}
+              disabled={items.length === 0 || loading}
+              className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Preset
+              {loading ? "Saving..." : "Save Preset"}
             </button>
           </div>
 
           {items.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white/30">
-              Drag anything here
+            <div className="absolute inset-0 flex items-center justify-center text-white/30 text-lg">
+              Drag devices here to get started
             </div>
           )}
 
@@ -105,8 +122,8 @@ export default function Canvas() {
               key={it.id}
               item={it}
               onMove={moveItem}
-              onSelect={(id) => setSelectedId(id)}
-              selected={selectedId === it.id}
+              onSelect={(id) => setSelectedDeviceId(id)}
+              selected={selectedDeviceId === it.id}
             />
           ))}
 
@@ -228,12 +245,13 @@ export default function Canvas() {
           )}
         </div>
 
-        {/* toast */}
-        {toast && (
-          <div className="absolute left-1/2 -translate-x-1/2 -translate-y-4 top-0 bg-green-600 text-white px-4 py-2 rounded shadow-md">
-            {toast}
-          </div>
-        )}
+        {/* Preset Dialog */}
+        <PresetDialog
+          isOpen={showPresetDialog}
+          onClose={() => setShowPresetDialog(false)}
+          onSave={handlePresetSave}
+          loading={loading}
+        />
       </div>
     </div>
   );
