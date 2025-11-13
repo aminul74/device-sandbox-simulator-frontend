@@ -1,6 +1,6 @@
 ﻿# Device Sandbox Simulator (Frontend)
 
-An interactive React + TypeScript app to drag-and-drop virtual devices (Light and Fan), control them, and manage presets.
+An interactive React + TypeScript app to drag-and-drop virtual devices (Light and Fan), control them in real-time, and manage preset configurations.
 
 ## Quick start
 
@@ -19,25 +19,66 @@ Open http://localhost:5173 in your browser.
 
 ## Features
 
-- Drag-and-drop device placement
-- Real-time controls (light color/brightness, fan speed)
-- Save / Load / Delete presets
-- Toast notifications
-- Clean, minimal architecture (Context API)
+- **Drag-and-drop** - Place devices on canvas by dragging from sidebar
+- **Device controls** - Adjust light brightness, color, and fan speed in real-time
+- **Preset management** - Save, load, and delete device configurations
+- **Visual feedback** - Glow effects for lights and smooth animations
+- **Error handling** - Toast notifications for success and error states
+- **Responsive design** - Works on desktop and tablet screens
+- **Modular architecture** - Easy to extend with new device types
 
 ## Scripts
 
 ```powershell
-npm run dev     # Start dev server
+npm run dev     # Start dev server with hot reload
 npm run build   # Type-check and build for production
-npm run lint    # Run ESLint
+npm run lint    # Run ESLint code validation
 ```
 
 ## Architecture overview
 
-- src/context/DeviceContext.tsx — single source of truth for app state and actions
-- src/components/\* — UI components (Canvas, Sidebar, Items, Dialog, Toast)
-- src/services/api.ts — minimal typed API layer for presets and devices
-- src/types/index.ts — shared TypeScript types
+### State Management
 
-Environment variable: set VITE_API_URL to point to your backend. If not set, it defaults to http://127.0.0.1:8000/api.
+- **DeviceContext.tsx** — Central state management using React Context
+  - Tracks placed devices, selected device, presets
+  - Detects unsaved changes for save validation
+  - Handles all device and preset operations
+
+### Components (Modular)
+
+- **Canvas.tsx** — Main workspace where devices are placed and controlled
+- **PlacedDevice.tsx** — Individual device with drag support and visual effects
+- **Sidebar.tsx** — Left panel with draggable device types and saved presets
+- **PresetItem.tsx** — Saved preset item (can load or drag to canvas)
+- **DeviceItem.tsx** — Available device type (can drag to canvas)
+- **PresetDialog.tsx** — Modal for entering preset name when saving
+- **Toast.tsx** — Temporary notifications for user feedback
+
+### Services
+
+- **api.ts** — Typed API client with error handling
+  - Communicates with backend for presets and devices
+  - Try-catch blocks prevent app crashes on API errors
+
+### Types
+
+- **types/index.ts** — Shared TypeScript interfaces for type safety
+  - Device types (Light, Fan) with their properties
+  - Preset structure for saving configurations
+
+## Configuration
+
+Environment variable:
+
+- `VITE_API_URL` — Backend API endpoint (defaults to http://127.0.0.1:8000/api)
+
+Set this in `.env` file before running the app.
+
+## How to use
+
+1. **Add devices** — Drag device types from sidebar to canvas
+2. **Move devices** — Click and drag devices on canvas to reposition
+3. **Control devices** — Select a device and adjust its settings (power, color, brightness, speed)
+4. **Save preset** — Click "Save Preset" to save current device setup with a name
+5. **Load preset** — Click a saved preset to load it or drag it to canvas
+6. **Delete preset** — Click delete icon on preset and confirm deletion

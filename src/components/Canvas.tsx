@@ -4,52 +4,51 @@ import PlacedDevice from "./PlacedDevice";
 import PresetDialog from "./PresetDialog";
 import { useDeviceContext } from "../context/useDeviceContext";
 
+// Canvas component for dropping and managing devices on the canvas
 export default function Canvas() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const {
     devices: items,
-    setDevices,
     addDevice,
     updateDevice: updateItem,
     clearDevices,
     selectedDeviceId,
     setSelectedDeviceId,
     savePreset,
+    loadPreset,
     loading,
+    hasUnsavedChanges,
   } = useDeviceContext();
 
   const [showPresetDialog, setShowPresetDialog] = useState(false);
 
+  // Allow dropping items on canvas
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
   }
 
+  // Handle dropped items (devices or presets)
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
 
-    // Check if it's a preset being dropped
     const presetData = e.dataTransfer.getData("application/preset");
     const generateUniqueId = () =>
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random()}`;
+
+    // Try to load preset if one was dropped
     if (presetData) {
       try {
         const preset = JSON.parse(presetData) as Preset;
-        // Ensure all device IDs are unique when loading a preset
-        const devicesWithUniqueIds = preset.settings.map((device) => ({
-          ...device,
-          id: generateUniqueId(),
-        }));
-        setDevices(devicesWithUniqueIds);
-        setSelectedDeviceId(null);
+        loadPreset(preset);
         return;
-      } catch {
-        console.error("Failed to parse dropped preset data");
+      } catch (error) {
+        console.error("Failed to load preset:", error);
       }
     }
 
-    // Otherwise, it's a device being dropped
+    // Try to add a new device
     const raw = e.dataTransfer.getData("application/device");
     if (!raw) return;
     try {
@@ -57,36 +56,50 @@ export default function Canvas() {
       const rect = containerRef.current!.getBoundingClientRect();
       const x = e.clientX - rect.left - 40;
       const y = e.clientY - rect.top - 40;
-      const base: PD = {
-        id: generateUniqueId(),
-        type: payload.type,
-        x: Math.max(0, x),
-        y: Math.max(0, y),
-      };
+
       const newItem: PD =
         payload.type === "light"
-          ? { ...base, power: true, brightness: 70, color: "#ffdca6" }
-          : { ...base, power: true, speed: 60 };
+          ? {
+              id: generateUniqueId(),
+              type: payload.type,
+              x: Math.max(0, x),
+              y: Math.max(0, y),
+              power: true,
+              brightness: 70,
+              color: "#ffdca6",
+            }
+          : {
+              id: generateUniqueId(),
+              type: payload.type,
+              x: Math.max(0, x),
+              y: Math.max(0, y),
+              power: true,
+              speed: 60,
+            };
       addDevice(newItem);
-    } catch {
-      console.error("Failed to parse dropped device data");
+    } catch (error) {
+      console.error("Failed to add device:", error);
     }
   }
 
+  // Update device position when dragged
   function moveItem(id: string, x: number, y: number) {
     updateItem(id, { x, y });
   }
 
-  function handleSavePreset() {
-    if (items.length === 0) {
+  // Show preset dialog only if there are unsaved changes
+  function handleShowPresetDialog() {
+    if (!hasUnsavedChanges) {
       return;
     }
     setShowPresetDialog(true);
   }
 
+  // Save preset and clear canvas
   async function handlePresetSave(name: string) {
     await savePreset(name);
     setShowPresetDialog(false);
+    clearDevices();
   }
 
   const selected = items.find((it) => it.id === selectedDeviceId) ?? null;
@@ -107,14 +120,14 @@ export default function Canvas() {
           <div className="absolute right-4 top-4 flex gap-3">
             <button
               onClick={() => clearDevices()}
-              className="bg-[#0b1620] text-white/80 px-3 py-1 rounded-md border border-white/6 text-sm hover:bg-[#1E2939] transition-colors"
+              className="bg-[#0b1620] text-white/80 px-3 py-1 rounded-md border border-white/6 text-sm hover:bg-[#1E2939] transition-colors cursor-pointer"
             >
               Clear
             </button>
             <button
-              onClick={handleSavePreset}
-              disabled={items.length === 0 || loading}
-              className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleShowPresetDialog}
+              disabled={!hasUnsavedChanges || loading}
+              className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
             >
               {loading ? "Saving..." : "Save Preset"}
             </button>

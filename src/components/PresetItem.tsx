@@ -7,6 +7,7 @@ interface PresetItemProps {
   onDelete: () => void;
 }
 
+// Displays a saved preset that can be loaded, dragged to canvas, or deleted
 export default function PresetItem({
   preset,
   onLoad,
@@ -15,10 +16,12 @@ export default function PresetItem({
   const [isHovered, setIsHovered] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Make preset draggable to canvas
   const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.dataTransfer.setData("application/preset", JSON.stringify(preset));
   };
 
+  // Handle delete with confirmation
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (showDeleteConfirm) {

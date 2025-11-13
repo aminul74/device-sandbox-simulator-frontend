@@ -1,9 +1,11 @@
 import axios from "axios";
 import type { Preset, PlacedDevice, ApiResponse } from "../types";
 
+// Get API base URL from environment or use default local backend
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
+// Create axios instance with base URL and headers
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,40 +13,54 @@ const api = axios.create({
   },
 });
 
-// API Service for managing presets
+// Presets API endpoints
 export const presetsApi = {
   // Get all saved presets
   async getAll(): Promise<Preset[]> {
-    const response = await api.get<ApiResponse<Preset[]>>("/presets");
-    if (response.data.success && response.data.data) return response.data.data;
-    throw new Error(response.data.message || "Failed to fetch presets");
+    try {
+      const { data } = await api.get<ApiResponse<Preset[]>>("/presets");
+      return data.data || [];
+    } catch (error) {
+      console.error("Error fetching presets:", error);
+      return [];
+    }
   },
 
-  // Create a new preset
+  // Create and save a new preset
   async create(name: string, devices: PlacedDevice[]): Promise<Preset> {
-    const response = await api.post<ApiResponse<Preset>>("/presets", {
-      name,
-      settings: JSON.stringify(devices),
-    });
-    if (response.data.success && response.data.data) return response.data.data;
-    throw new Error(response.data.message || "Failed to create preset");
+    try {
+      const { data } = await api.post<ApiResponse<Preset>>("/presets", {
+        name,
+        settings: devices,
+      });
+      return data.data!;
+    } catch (error) {
+      console.error("Error creating preset:", error);
+      throw error;
+    }
   },
 
-  // Delete a preset
+  // Delete a preset by ID
   async delete(id: number): Promise<void> {
-    const response = await api.delete<ApiResponse<void>>(`/presets/${id}`);
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to delete preset");
+    try {
+      await api.delete(`/presets/${id}`);
+    } catch (error) {
+      console.error("Error deleting preset:", error);
+      throw error;
     }
   },
 };
 
-// API Service for managing devices
+// Devices API endpoints
 export const devicesApi = {
-  // Get all devices
+  // Get all available device types
   async getAll(): Promise<PlacedDevice[]> {
-    const response = await api.get<ApiResponse<PlacedDevice[]>>("/devices");
-    if (response.data.success && response.data.data) return response.data.data;
-    throw new Error(response.data.message || "Failed to fetch devices");
+    try {
+      const { data } = await api.get<ApiResponse<PlacedDevice[]>>("/devices");
+      return data.data || [];
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      return [];
+    }
   },
 };

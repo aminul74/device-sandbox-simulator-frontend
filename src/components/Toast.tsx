@@ -3,13 +3,16 @@ interface ToastProps {
   type?: "success" | "error" | "info";
 }
 
+// Temporary notification displayed at the top of the screen
 export default function Toast({ message, type = "info" }: ToastProps) {
+  // Define background colors and icons for each notification type
   const bgColors = {
     success: "bg-green-600",
     error: "bg-red-600",
     info: "bg-blue-600",
   };
 
+  // Icons for different notification types
   const icons = {
     success: (
       <svg

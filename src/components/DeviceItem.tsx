@@ -6,7 +6,7 @@ interface Props {
   label: string;
 }
 
-// Icon components for different device types
+// SVG icon for light device
 const lightIcon = (
   <svg
     width="20"
@@ -39,6 +39,7 @@ const lightIcon = (
   </svg>
 );
 
+// SVG icon for fan device
 const fanIcon = (
   <svg
     width="20"
@@ -71,9 +72,11 @@ const fanIcon = (
   </svg>
 );
 
+// Device item component that can be dragged to canvas
 export default function DeviceItem({ type, label }: Props) {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Enable drag functionality
   const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
     e.dataTransfer.setData("application/device", JSON.stringify({ type }));
   };

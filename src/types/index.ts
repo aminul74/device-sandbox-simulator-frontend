@@ -1,3 +1,4 @@
+// Device Types
 export type DeviceType = "light" | "fan";
 
 export interface PlacedDevice {
@@ -5,9 +6,11 @@ export interface PlacedDevice {
   type: DeviceType;
   x: number;
   y: number;
-  power?: boolean;
+  power: boolean;
+  // Light properties
   brightness?: number;
   color?: string;
+  // Fan properties
   speed?: number;
 }
 
@@ -16,6 +19,7 @@ export interface AvailableDevice {
   label: string;
 }
 
+// Preset Types
 export interface Preset {
   id: number;
   name: string;
@@ -24,9 +28,9 @@ export interface Preset {
   updated_at?: string;
 }
 
+// API Response Type
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   message?: string;
-  error?: string;
 }

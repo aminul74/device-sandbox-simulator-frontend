@@ -1,6 +1,7 @@
 import { DeviceItem, PresetItem } from "./index";
 import { useDeviceContext } from "../context/useDeviceContext";
 
+// Left sidebar with draggable devices and saved presets
 export default function Sidebar() {
   const { presets, availableDevices, loadPreset, deletePreset, loading } =
     useDeviceContext();
@@ -9,7 +10,6 @@ export default function Sidebar() {
     <aside className="hidden md:block min-w-[245.5px] border-r border-[#1E2939] bg-[#101828] p-6">
       <h3 className="text-base text-[#F3F4F6] font-normal mb-3">Devices</h3>
       <div className="flex flex-col gap-5 mt-4">
-        
         {loading ? (
           <div className="w-[191px] h-[46px] text-base text-[#E5E7EB] p-3 rounded-lg bg-transparent border border-[#364153] flex items-center justify-center">
             Loading...

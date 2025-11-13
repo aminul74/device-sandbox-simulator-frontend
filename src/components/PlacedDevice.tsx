@@ -7,11 +7,13 @@ interface Props {
   onSelect?: (id: string) => void;
 }
 
+// Displays a single placed device on the canvas with drag support and visual effects
 export default function PlacedDevice({ item, onMove, onSelect }: Props) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef<{ dx: number; dy: number } | null>(null);
   const uidRef = useRef<string>(Math.random().toString(36).slice(2, 9));
 
+  // Handle pointer down to start dragging
   function onPointerDown(e: React.PointerEvent) {
     const el = elRef.current;
     if (!el) return;
@@ -26,6 +28,7 @@ export default function PlacedDevice({ item, onMove, onSelect }: Props) {
     if (onSelect) onSelect(item.id);
   }
 
+  // Update device position while dragging
   function pointerMove(e: PointerEvent) {
     const canvas = elRef.current?.parentElement?.getBoundingClientRect();
     if (!canvas || !draggingRef.current) return;
@@ -34,16 +37,18 @@ export default function PlacedDevice({ item, onMove, onSelect }: Props) {
     onMove(item.id, Math.max(0, x), Math.max(0, y));
   }
 
+  // Stop dragging
   function pointerUp() {
     draggingRef.current = null;
     window.removeEventListener("pointermove", pointerMove);
   }
 
+  // Calculate brightness level and glow effects
   const brightness = item.brightness ?? 0;
   const hasLight = item.type === "light" && !!item.power;
   const effectiveBrightness = hasLight ? Math.max(15, brightness) : brightness;
-  //   const highlightOpacity = hasLight ? 1 : Math.min(1, brightness / 100);
 
+  // Glow filter for light devices
   const glowStyle: React.CSSProperties | undefined = hasLight
     ? {
         filter: `drop-shadow(0 0 ${20 + effectiveBrightness / 3}px ${
